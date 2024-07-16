@@ -1,0 +1,70 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+syntax = "proto2";
+
+message UnixSocketProto {
+  // optional google.rpc.Status status = 5;
+  reserved 5;
+
+  // Update the "last_modified" comment below after you add your message type
+  // last_modified: queue_id_response, index: 4.
+  oneof proto_payload_oneof {
+      bytes raw_bytes = 1;  // Leave this intact for now for backward
+                            // compatibility, so we can gradually migrate
+                            // different users (ex: gpu mem exporter import, rx
+                            // rule manager/client, socket unit test, ...).  It
+                            // will be deprecated later with its index number
+                            // retired.
+      FlowSteerRuleRequest flow_steer_rule_request = 2;
+      QueueIdQuery queue_id_query = 3;
+      QueueIdResponse queue_id_response = 4;
+
+      // for keepalives
+      ApplicationRegisterRequest application_register_request = 6;
+    }
+}
+
+message QueueIdQuery {
+  required string gpu_pci_addr = 1;
+}
+
+message QueueIdResponse {
+  repeated int32 queue_ids = 1;
+}
+
+
+message FlowSteerRuleRequest {
+  optional FlowSteerNtupleProto flow_steer_ntuple = 1;
+  optional int32 queue_id = 2;
+  optional string gpu_pci_addr = 3;
+}
+
+message FlowSteerNtupleProto {
+  optional int32 flow_type = 1;
+
+  message SocketAddress {
+    // IP address in the presentation format
+    // For example: 192.168.0.1
+    optional string ip_address = 1;
+    // Port number in the host format
+    optional int32 port = 2;
+  }
+  optional SocketAddress src = 2;
+  optional SocketAddress dst = 3;
+}
+
+message ApplicationRegisterRequest {
+  optional bool register_client = 1;
+}

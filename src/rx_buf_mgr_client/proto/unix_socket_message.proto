@@ -1,0 +1,38 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+syntax = "proto2";
+
+import "unix_socket_proto.proto";
+
+message UnixSocketMessage {
+  // The types of the payload here reflect what ancillary messages of the unix
+  // socket channel are supported plus the primary message, the plain bytes
+  // stream.  See UnixSocketProto if you just want to extend a new message type
+  // over the plain bytes stream.
+  oneof payload_oneof {
+      UnixSocketProto proto = 1;  // The UnixSocketConnection serialize this field
+                                  // and send the byte stream over the unix
+                                  // socket; the peer deserialize it.
+
+      int32 fd = 2;  // The UnixSocketConnection sends this fd as a file
+                     // descriptor over a unix domain socket.  Sender: The sender
+                     // user code should have a file descriptor open and bound
+                     // with the resource it intends to share.  Receiver: The
+                     // UnixSocketConnection on the receiving side will likely
+                     // receives an fd with a different integer value (set up by
+                     // the kernel), and the receiver user code will be able to
+                     // access the resource via the fd.
+    }
+}

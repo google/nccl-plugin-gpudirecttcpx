@@ -1,0 +1,41 @@
+/*
+ Copyright 2024 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+#ifndef NET_GPUDIRECTTCPX_ADAPTER_NCCL_ADAPTER_H_
+#define NET_GPUDIRECTTCPX_ADAPTER_NCCL_ADAPTER_H_
+
+#include "ret.h"
+
+
+tcpxResult_t initAdapter();
+
+#define __TCPX_PTR_HOST 0
+#define __TCPX_PTR_CUDA 1
+
+#define __DEV_UNPACK 0
+#define __DEV_UNPACK_VERSION 0
+#define __DEV_UNPACK_MAX_QUEUE_DEPTH 2048
+
+#define __TCPX_NET_HANDLE_MAXSIZE 256
+
+class nativeNetDeviceHandle {
+};
+#define __DEV_NET_DEVICE_HANDLE nativeNetDeviceHandle
+class nativelNetProperties_v7_t {
+};
+#define __TCPX_NET_PROPERTIES_T nativelNetProperties_v7_t
+
+#endif  // NET_GPUDIRECTTCPX_ADAPTER_NCCL_ADAPTER_H_
