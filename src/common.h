@@ -36,6 +36,7 @@
 #include "stats/stats_buffer.h"
 #include "socket_utils.h"
 #include "work_queue.h"
+#include "netdev/netdev_bridge.h"
 
 /***** global vars start *****/
 
@@ -91,8 +92,9 @@ struct tcpxMemHandle {
   void* uptr;
   void* ptr;
   int mem_type;
-  int gpu_mem_fd;
-  // int dma_buf_fd;
+  NetdevBridge netdev_bridge;
+  int upstream_dma_buf_id;
+  int internal_gpu_mem_fd;
   void* gpu;
   void* gpu_tx;
 };

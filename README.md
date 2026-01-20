@@ -24,15 +24,19 @@ plugin, it has to be in `LD_LIBRARY_PATH` in order to be loaded by NCCL.
 
 ### Build
 
-The plugin uses CMake to build. You can build the plugin as follows:
+To simplify the build process, we have conveniently provided a build script:
 
-```
-$ cmake -S . -B build -DNCCL_INCLUDE_PATH=/repos/nccl/build/include
-$ cmake --build build
-```
+- [`tcpx_build.sh`](tcpx_build.sh)
 
-The plugin is located at `build/libnccl-net.so` and can be copied into your
-`LD_LIBRARY_PATH`.
+The script prepares the required dependencies then builds a Docker image containing
+the NCCL GPUDirectTCPX plugin. It is highly configurable and contains flags to
+specify the versions of NCCL and CUDA to build against as well as the repository
+to which the Docker image should be pushed.
+
+Sample usage:
+```
+./tcpx_build.sh -p -c -v v2.19.4-1 -u 12.0 -r $SAMPLE_REPO -i $SAMPLE_IMAGE_NAME -t $SAMPLE_TAG
+```
 
 ## Getting Help
 

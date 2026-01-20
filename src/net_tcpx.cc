@@ -162,7 +162,7 @@ static int taskProgress(struct tcpxFdData* fd_data, struct tcpxTask* t, int* use
         bytes = recv(fd_data->fd, data + t->offset, s, flags);
       } else {
         bytes = gpudirectTCPXRecv(fd_data->fd, t->data, t->size, t->offset, t->pipe, t->request_offset,
-                              user_buffer_count);
+                              user_buffer_count, t->r->is_tcpx_upstream);
       }
       TCPX_TP(TASK, TCPX_TASK_TP_RECVMSG, t, bytes, 1 /*place holder*/);
     }
@@ -171,9 +171,11 @@ static int taskProgress(struct tcpxFdData* fd_data, struct tcpxTask* t, int* use
         // LL
         bytes = send(fd_data->fd, data + t->offset, s, flags);
       } else {
-        bytes = gpudirectTCPXPostSend(fd_data->fd, t->r->gpu_mem_fd,
-                                  t->size, t->offset, t->page_off,
-                                  t->r->gpu_mem_off, t->pipe->buf);
+        bytes = gpudirectTCPXPostSend(fd_data->fd,
+                                      t->r->is_tcpx_upstream ? t->r->upstream_dma_buf_id : t->r->internal_gpu_mem_fd,
+                                      t->r->is_tcpx_upstream, t->size, t->offset,
+                                      t->page_off, t->r->gpu_mem_off,
+                                      t->pipe->buf);
         if (bytes > 0) {
           ++gpudirecttcpx_count;
           if (t->tx_i >= MAX_TX_COUNT) {
@@ -210,7 +212,6 @@ static int taskProgress(struct tcpxFdData* fd_data, struct tcpxTask* t, int* use
 
   return count;
 }
-
 static inline void tx_count_incr(struct tcpxTask* t, uint32_t v, uint64_t *comp_bytes) {
   for (uint32_t i = 0; i < v; i += 1) {
     *comp_bytes += t->tx_sz[t->tx_count + i];
@@ -564,6 +565,24 @@ tcpxResult_t tcpxInit(tcpxDebugLogger_t logFunction) {
                     /*lo=*/0,
                     /*hi=*/2); // non-inclusive
 
+  {
+    char *env = getenv("NCCL_GPUDIRECTTCPX_REPORT_NETWORK_LATENCY");
+    if (env) {
+      float v;
+      if (sscanf(env, "%f", &v) == 1) {
+        kReportNetworkLatency = v;
+      } else {
+        INFO(TCPX_ENV,
+             "NET/" PRODUCT_NAME " : NCCL_GPUDIRECTTCPX_REPORT_NETWORK_LATENCY "
+                                 "%s invalid, restore to default.",
+             env);
+      }
+    }
+    INFO(TCPX_ENV,
+         "NET/" PRODUCT_NAME " : NCCL_GPUDIRECTTCPX_REPORT_NETWORK_LATENCY: %f",
+         kReportNetworkLatency);
+  }
+
   char* u = TCPX_GET_ENV("UNIX_CLIENT_PREFIX");
   if (u) kUnixClientPrefix = u;
   INFO(NCCL_INIT, "NET/" PRODUCT_NAME " : unix client prefix %s", kUnixClientPrefix);
@@ -645,8 +664,8 @@ tcpxResult_t tcpxInit(tcpxDebugLogger_t logFunction) {
       char *env_str = TCPX_GET_ENV("SCHED_ALG");
 
       if (!env_str) {
-        env_string = std::string("RR");
-        INFO(TCPX_ENV, "TPCX_GPUDIRECTTCPX_SCHED_ALG unset. Using RR by default");
+        env_string = std::string("KATY");
+        INFO(TCPX_ENV, "TPCX_GPUDIRECTTCPX_SCHED_ALG unset. Using KATY by default");
       } else {
         env_string = std::string(env_str);
       }
@@ -658,9 +677,9 @@ tcpxResult_t tcpxInit(tcpxDebugLogger_t logFunction) {
         kSchedAlg = TCPX_FLOWMAPPER_SCHED_ALG_KATY;
         INFO(TCPX_ENV, "TCPX_GPUDIRECTTCPX_SCHED_ALG KATY");
       } else {
-        kSchedAlg = TCPX_FLOWMAPPER_SCHED_ALG_RR;
+        kSchedAlg = TCPX_FLOWMAPPER_SCHED_ALG_KATY;
         INFO(TCPX_ENV, "invalid TCPX_GPUDIRECTTCPX_SCHED_ALG %s."
-             " Using RR by default", env_string.c_str());
+             " Using KATY by default", env_string.c_str());
       }
     }
   }
@@ -721,7 +740,6 @@ static tcpxResult_t tcpxGetSpeed(char* devName, int* speed) {
   }
   return tcpxSuccess;
 }
-
 tcpxResult_t tcpxGetProperties(int dev, tcpxNetProperties_t* props) {
   props->name = kTcpxSocketDevs[dev].dev_name;
   props->pciPath = kTcpxSocketDevs[dev].pci_path;
@@ -734,7 +752,7 @@ tcpxResult_t tcpxGetProperties(int dev, tcpxNetProperties_t* props) {
   TCPXCHECK(tcpxGetSpeed(props->name, &props->speed));
   props->port = 0;
   props->maxComms = 65536;
-  props->latency = 0;
+  props->latency = kReportNetworkLatency;
   props->maxRecvs = 1;
   props->netDeviceType = DEV_UNPACK;
   props->netDeviceVersion = TCPX_UNPACK_VERSION;
@@ -794,14 +812,29 @@ tcpxResult_t tcpxRegMr(void* ocomm, void* data, int size, int type,
           WARN("data not aligned: %p vs 0x%012lu", data, PAGE_SIZE);
           return tcpxInternalError;
         }
+
+        if ((memHandle->netdev_bridge.initNetdevBridge()) < 0) {
+          INFO(TCPX_INIT | TCPX_NET,
+               "NET/" PRODUCT_NAME " : Netlink Init Failed."
+               " Falling back to ioctl().");
+        }
+
         char* nic_pci_addr = strrchr(kTcpxSocketDevs[comm->dev].pci_path, '/') + 1;
         void* gpu;
+        int fd_or_id = 0;
         TCPXCHECK(gpu_current_dev(global.gpus, &gpu));
-        TCPXCHECK(gpu_tx_reg_mr(gpu, &(memHandle->gpu_tx), &(memHandle->gpu_mem_fd),
-            nic_pci_addr, data, size));
-        if (memHandle->gpu_mem_fd < 0) {
+        TCPXCHECK(gpu_tx_reg_mr(gpu,
+                                &(memHandle->netdev_bridge),
+                                &(memHandle->gpu_tx),
+                                &fd_or_id, nic_pci_addr, data, size));
+        if (fd_or_id < 0) {
           WARN("get_gpumem_dmabuf_pages_fd() failed!");
           return tcpxInternalError;
+        }
+        if (memHandle->netdev_bridge.isInited()) {
+          memHandle->upstream_dma_buf_id = fd_or_id;
+        } else {
+          memHandle->internal_gpu_mem_fd = fd_or_id;
         }
       } else {
         WARN("p2pdma api won't work with only RegMr, due to alignment issue");
@@ -833,7 +866,11 @@ tcpxResult_t tcpxDeregMr(void* ocomm, void* mhandle) {
       break;
     }
     case TCPX_PTR_CUDA: {
-      SYSCHECK(close(memHandle->gpu_mem_fd), "close gpu_mem_fd");
+      if (memHandle->netdev_bridge.isInited()) {
+        memHandle->netdev_bridge.destroyNetdevBridge();
+      } else {
+        SYSCHECK(close(memHandle->internal_gpu_mem_fd), "close gpu_mem_fd");
+      }
       if (kUseDmaBuf) {
         TCPXCHECK(gpu_tx_dereg_mr(memHandle->gpu, memHandle->gpu_tx));
       } else {
@@ -879,7 +916,8 @@ static tcpxResult_t tcpxGetRequest(struct tcpxComm* comm,
   r->data = data;
   r->offset = 0;
   r->size = size;
-  r->gpu_mem_fd = mhandle->gpu_mem_fd;
+  r->internal_gpu_mem_fd = mhandle->internal_gpu_mem_fd;
+  r->upstream_dma_buf_id = mhandle->upstream_dma_buf_id;
   r->gpu_mem_off = (char*)data - (char*)mhandle->ptr;
   if (op == TCPX_SOCKET_SEND)
     r->size_pending = size;
@@ -887,6 +925,7 @@ static tcpxResult_t tcpxGetRequest(struct tcpxComm* comm,
     r->size_pending = -1;
   r->comm = comm;
 
+  r->is_tcpx_upstream = mhandle->netdev_bridge.isInited();
   r->unpack_slot.cnt = nullptr;  // important marker
 
   *req = r;
@@ -1490,6 +1529,7 @@ tcpxResult_t tcpxIrecvConsumed(void* ocomm, int n, void* request) {
               static_cast<struct tcpxNetDeviceQueue*>(
                   comm->socket_direct_handle);
   struct tcpxRequest* r = static_cast<struct tcpxRequest*>(request);
+  bool is_tcpx_upstream = r->is_tcpx_upstream;
 
   // no send
   if (r->op == TCPX_SOCKET_SEND) {
@@ -1519,8 +1559,6 @@ tcpxResult_t tcpxIrecvConsumed(void* ocomm, int n, void* request) {
     WARN("NET/" PRODUCT_NAME " : irecvConsumed called with invalid request %p vs expected %p", ir, request);
     return tcpxInternalError;
   }
-
-  // int q_idx = h->head;
   uint64_t q_idx = ir->unpack_slot.idx;
 
   // INFO(TCPX_NET, "NET/" PRODUCT_NAME " : irecvConsumed %p, q_idx %d, head %d", request, q_idx, h->head);
@@ -1534,7 +1572,7 @@ tcpxResult_t tcpxIrecvConsumed(void* ocomm, int n, void* request) {
     return tcpxInternalError; // tcpxSuccess;
   }
 
-  TCPXCHECK(recyclePages(h, q_idx));
+  TCPXCHECK(recyclePages(h, q_idx, is_tcpx_upstream));
 
   comm->rq.dequeue();
 

@@ -35,6 +35,7 @@
 #include "tx_pool.h"
 #include "../flags.h"
 #include "../macro.h"
+#include "../netdev/netdev_bridge.h"
 
 bool init = 0;
 void lazyInit() {
@@ -223,7 +224,10 @@ tcpxResult_t gpu_get_rxmem(void* gpu, void** rxmem) {
   return tcpxSuccess;
 }
 
-tcpxResult_t gpu_tx_reg_mr(void* gpu, void** gpu_tx, int* fd, char* nic_pci_addr, void* buf, size_t sz) {
+tcpxResult_t gpu_tx_reg_mr(void* gpu, NetdevBridge *netdev_bridge, void** gpu_tx,
+                           int* internal_gpu_mem_fd_or_upstream_dma_buf_id,
+                           char* nic_pci_addr,
+                           void* buf, size_t sz) {
   struct gpuDev *_gpu = (struct gpuDev *)gpu;
 
   struct gpuTx *_gpu_tx;
@@ -231,18 +235,24 @@ tcpxResult_t gpu_tx_reg_mr(void* gpu, void** gpu_tx, int* fd, char* nic_pci_addr
   TCPXCHECK(gpu_push_current(gpu));
 
   TCPXCHECK(tcpxCalloc(&_gpu_tx, 1));
-  int ret = get_gpumem_dmabuf_pages_fd(_gpu->pci_addr, nic_pci_addr,
-                                 (CUdeviceptr)buf, sz, &(_gpu_tx->dma_buf_fd));
+  // This function returns the gpu_mem_fd for internal implementation or
+  // dma_buf_id for upstream implementation.-
+  int ret = get_gpumem_dmabuf_pages_fd(netdev_bridge, _gpu->pci_addr,
+                                       nic_pci_addr, (CUdeviceptr)buf, sz,
+                                       &(_gpu_tx->dma_buf_fd));
   if (ret < 0) {
     WARN("gpu_tx_reg_mr failed %d", ret);
     return tcpxInternalError;
   }
-  _gpu_tx->gpu_mem_fd = ret;
+
+  if (!netdev_bridge->isInited()) {
+    _gpu_tx->gpu_mem_fd = ret;
+  }
 
   TCPXCHECK(gpu_pop_current(nullptr, nullptr));
 
   *gpu_tx = _gpu_tx;
-  *fd = _gpu_tx->gpu_mem_fd;
+  *internal_gpu_mem_fd_or_upstream_dma_buf_id = ret;
   return tcpxSuccess;
 }
 
@@ -280,7 +290,6 @@ tcpxResult_t gpu_node(void* gpu, int *n) {
   *n = _gpu->dev < 4 ? 0 : 1;
   return tcpxSuccess;
 }
-
 tcpxResult_t gpu_ordinal(void* gpu, /*output=*/int *ordinal) {
   struct gpuDev* _gpu = (struct gpuDev*) gpu;
   *ordinal = _gpu->dev;

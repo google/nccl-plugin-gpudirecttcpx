@@ -18,15 +18,15 @@
 #define NET_GPUDIRECTTCPX_CUDA_TX_POOL_H_
 
 #include <stddef.h>
-
 #include "cuda.h"
 
+class NetdevBridge;
 
 int get_gpumem_pages_fd(char* pci_addr, CUdeviceptr gpu_mem, size_t gpu_mem_sz,
                          int* align_offp);
 
-int get_gpumem_dmabuf_pages_fd(char* gpu_pci_addr, char* nic_pci_addr,
-                               CUdeviceptr gpu_mem, size_t gpu_mem_sz,
-                               int* dma_buf_fd);
+int get_gpumem_dmabuf_pages_fd(NetdevBridge *netdev_bridge, char* gpu_pci_addr,
+                               char* nic_pci_addr, CUdeviceptr gpu_mem,
+                               size_t gpu_mem_sz, int* dma_buf_fd);
 
 #endif  // NET_GPUDIRECTTCPX_CUDA_TX_POOL_H_

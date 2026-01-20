@@ -28,7 +28,7 @@ volatile ncclNet_v7_t ncclNetPlugin_v7 = {
     tcpxConnect_v5,
     tcpxAccept_v5,
     tcpxRegMr,
-    nullptr,  // TODO: tmp not using tcpx's DMA-BUF support, use ioctl for now
+    nullptr,
     tcpxDeregMr,
     tcpxIsend_v5,
     tcpxIrecv_v5,

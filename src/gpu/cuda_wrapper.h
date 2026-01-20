@@ -19,6 +19,8 @@
 
 #include "ret.h"
 
+class NetdevBridge;
+
 tcpxResult_t gpu_n_dev(/*output=*/int *n);
 
 tcpxResult_t gpu_init(/*output=*/void **gpus, int n);
@@ -30,7 +32,10 @@ tcpxResult_t gpu_pop_current(void* gpus, void** gpu);
 
 tcpxResult_t gpu_get_rxmem(void *gpu, /*output=*/void **rxmem);
 
-tcpxResult_t gpu_tx_reg_mr(void *gpu, /*output=*/void **gpu_tx, /*output=*/int *fd, char *nic_pci_addr, void *buf, size_t sz);
+tcpxResult_t gpu_tx_reg_mr(void *gpu, NetdevBridge *netdev_bridge,
+                           /*output=*/void **gpu_tx,
+                           /*output=*/int *internal_gpu_mem_fd_or_upstream_dma_buf_id,
+                           char *nic_pci_addr, void *buf, size_t sz);
 tcpxResult_t gpu_tx_dereg_mr(void *gpu, void *gpu_tx);
 
 tcpxResult_t gpu_pci_addr(void* gpu, char *buf, int len);

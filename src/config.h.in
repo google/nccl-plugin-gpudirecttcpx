@@ -25,7 +25,7 @@
 #define TCPX_MINOR_STR "@net-tcpx_VERSION_MINOR@"
 #define TCPX_PATCH_STR "@net-tcpx_VERSION_PATCH@"
 
-#define TCPX_SUFFIX ""
+#define TCPX_SUFFIX "report_latency"
 
 #define TCPX_VERSION_STRING TCPX_MAJOR_STR "." TCPX_MINOR_STR "." TCPX_PATCH_STR "." TCPX_SUFFIX
 

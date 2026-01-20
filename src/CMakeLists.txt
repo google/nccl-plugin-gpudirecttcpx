@@ -1,10 +1,10 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ add_subdirectory(devcomm)
 add_subdirectory(rx_buf_mgr_client)
 add_subdirectory(sock)
 add_subdirectory(stats)
+add_subdirectory(netdev)
 
 add_library(net_gpudirecttcpx_flags STATIC
   flags.cc)
@@ -75,6 +76,7 @@ target_link_libraries(net_tcpx
     net_gpudirecttcpx_stats_lib
     net_gpudirecttcpx_timeout_lib
     net_gpudirecttcpx_flags
+    net_gpudirecttcpx_netdev
   PRIVATE
     Threads::Threads
     CUDA::cuda_driver

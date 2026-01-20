@@ -1,6 +1,6 @@
 # How to contribute
 
-This is intended to be a reference implementation for folks that want to 
+This is intended to be a reference implementation for folks that want to
 familiarize themselves with the userspace that could accompany devmem TCP,
 and we do not expect to iterate on this component.
 

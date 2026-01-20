@@ -77,4 +77,6 @@ void parseSlownessSwitchFlagInternal(const char *env_str,
 
 extern int kCudaUsePrimaryCtx;
 
+extern float kReportNetworkLatency;
+
 #endif  // NET_GPUDIRECTTCPX_FLAGS_H_

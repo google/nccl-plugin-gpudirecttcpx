@@ -32,14 +32,12 @@ tcpxResult_t __gpu_inline_alloc(void* gpu_dev, void** inline_handle) {
   struct inlineHandle* _inline_handle;
   TCPXCHECK(tcpxCalloc(&_inline_handle, 1));
   _inline_handle->gpu_dev = gpu_dev;
-
   *inline_handle = _inline_handle;
   return tcpxSuccess;
 }
 
 tcpxResult_t __gpu_inline_free(void* inline_handle) {
   struct inlineHandle* _inline_handle = (struct inlineHandle*) inline_handle;
-
   free(_inline_handle);
 
   return tcpxSuccess;

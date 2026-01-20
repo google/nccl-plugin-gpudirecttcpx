@@ -145,11 +145,6 @@ tcpxResult_t parsePortMapping(struct fixedPortRangeCtx* info) {
   return tcpxSuccess;
 }
 
-/* program flows on the fly */
-// struct connectProgramFlows {
-//   bool active;
-// };
-
 struct connectionSetupCtx {
   struct redirectControlCtx *redirect_control_ctx;
   struct fixedPortRangeCtx *fixed_port_range_ctx;
@@ -896,7 +891,6 @@ tcpxResult_t tcpxInitConnectionSetup(void** osetup) {
   ctx->tx_stride = 0;
   pthread_mutex_init(&ctx->rx_stride_mu, NULL);
   ctx->rx_stride = 0;
-
   const char* ctrl_dev_str = TCPX_GET_ENV("CTRL_DEV");
   if (ctrl_dev_str == nullptr || strlen(ctrl_dev_str) == 0) {
     INFO(TCPX_INIT, "NET/" PRODUCT_NAME " : Using default ctrl sockets");

@@ -1,10 +1,10 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,6 @@
 # limitations under the License.
 
 enable_language(CUDA)
-
 function(DETECT_PATH name path)
   if(NOT DEFINED ${path})
     message(FATAL_ERROR "${name} undefined, define ${path}")
@@ -26,7 +25,6 @@ endfunction()
 
 DETECT_PATH(nccl_src_include NCCL_SRC_INCLUDE_PATH)
 DETECT_PATH(nccl_build_include NCCL_BUILD_INCLUDE_PATH)
-
 file(GLOB NET_GPUDIRECTTCPX_ADAPTER_NCCL_LIB_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )

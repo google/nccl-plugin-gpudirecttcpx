@@ -70,8 +70,10 @@ struct tcpxRequest {
   int offset;
   int size;
   int size_pending;
-  int gpu_mem_fd;
+  int internal_gpu_mem_fd;
   int gpu_mem_off;
+  int upstream_dma_buf_id;
+  bool is_tcpx_upstream;
   struct unpackSlot unpack_slot;
 };
 

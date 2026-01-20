@@ -151,3 +151,5 @@ void parseSlownessSwitchFlags() {
 }
 
 int kCudaUsePrimaryCtx = 1;
+
+float kReportNetworkLatency = 0.0f;

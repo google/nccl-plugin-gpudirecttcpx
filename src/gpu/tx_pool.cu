@@ -22,12 +22,14 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <net/if.h>
 
 #include "common.h"
 #include "debug1.h"
 #include "param1.h"
-
+#include "tx_pool.h"
 #include "../macro.h"
+#include "../netdev/netdev_bridge.h"
 
 
 /**** p2pdma begin ****/
@@ -101,7 +103,90 @@ struct dma_buf_create_pages_info {
 #define DMA_BUF_CREATE_PAGES _IOW(DMA_BUF_BASE, 2, struct dma_buf_create_pages_info)
 TCPX_PARAM(RegDmabufUseInternalApi, "GPUDIRECTTCPX_REG_DMABUF_USE_INTERNAL_API", 0);
 
-int get_gpumem_dmabuf_pages_fd(char* gpu_pci_addr, char* nic_pci_addr, CUdeviceptr gpu_mem, size_t gpu_mem_sz, int* dma_buf_fd) {
+// Returns dma_buf_id for upstream implementation (failure on internal
+// implementation).
+static int bind_tx_nl(NetdevBridge *netdev_bridge, char* nic_pci_addr, uint32_t dmabuf_fd) {
+  int error = 0;
+  int pci_addr_len = strlen(nic_pci_addr);
+  uint32_t ifindex = 0;
+
+  // Hardcoded conversion of PCI Address to ifname. Use if_nametoindex()
+  // to get ifindex for given ifname.
+  if (strncmp(nic_pci_addr, "0000:06:00.0", pci_addr_len) == 0) {
+    ifindex = if_nametoindex("eth1");
+  }
+
+  if (strncmp(nic_pci_addr, "0000:0c:00.0", pci_addr_len) == 0) {
+    ifindex = if_nametoindex("eth2");
+  }
+
+  if (strncmp(nic_pci_addr, "0000:86:00.0", pci_addr_len) == 0) {
+    ifindex = if_nametoindex("eth3");
+  }
+
+  if (strncmp(nic_pci_addr, "0000:8c:00.0", pci_addr_len) == 0) {
+    ifindex = if_nametoindex("eth4");
+  }
+
+  error = netdev_bridge->bindTx(ifindex, dmabuf_fd);
+  if (error < 0) {
+    INFO(TCPX_INIT | TCPX_NET,
+         "NET/" PRODUCT_NAME " : Bind TX using Netlink Failed.");
+    goto done;
+  }
+
+  // If Netlink API is successful, error will have the return dmabuf id.
+  INFO(TCPX_INIT | TCPX_NET,
+       "NET/" PRODUCT_NAME " : Bind TX using Netlink Succeeded."
+       " DMA BUF ID: %d", error);
+
+done:
+  return error;
+}
+
+// Returns gpu memory binding fd (gpu_mem_fd) on internal implementation
+// (not called on upstream implementation).
+static int bind_tx_ioctl(char* nic_pci_addr, uint32_t dmabuf_fd) {
+  int error = 0;
+  struct dma_buf_create_pages_info info = {0};
+  uint16_t pci_bdf[3] = {0};
+
+  info.dma_buf_fd = dmabuf_fd;
+  info.create_page_pool = 0;
+
+  error = sscanf(nic_pci_addr, "0000:%hx:%hx.%hx", &pci_bdf[0], &pci_bdf[1],
+                 &pci_bdf[2]);
+  if (error != 3) {
+    error = -EINVAL;
+    goto done;
+  }
+
+  info.pci_bdf[0] = pci_bdf[0];
+  info.pci_bdf[1] = pci_bdf[1];
+  info.pci_bdf[2] = pci_bdf[2];
+
+  error = ioctl(dmabuf_fd, DMA_BUF_CREATE_PAGES, &info);
+  if (error < 0) {
+    perror("ioctl get dma_buf frags");
+    INFO(TCPX_INIT | TCPX_NET,
+         "NET/" PRODUCT_NAME " : Bind TX using ioctl() Failed.");
+    error = -EIO;
+    goto done;
+  }
+
+  // If ioctl() call is successful, error will have the return gpu mem fd.
+  INFO(TCPX_INIT | TCPX_NET,
+       "NET/" PRODUCT_NAME " : Bind TX using ioctl() Succeeded."
+       " GPU MEM FD: %d", error);
+done:
+  return error;
+}
+
+// This function returns the gpu_mem_fd for internal implementation or
+// dma_buf_id for upstream implementation.
+int get_gpumem_dmabuf_pages_fd(NetdevBridge *netdev_bridge, char* gpu_pci_addr,
+                               char* nic_pci_addr, CUdeviceptr gpu_mem,
+                               size_t gpu_mem_sz, int* dma_buf_fd) {
   int err, ret, fd;
 
   if (TCPX_GET_PARAM(RegDmabufUseInternalApi) == 0) {
@@ -149,27 +234,29 @@ int get_gpumem_dmabuf_pages_fd(char* gpu_pci_addr, char* nic_pci_addr, CUdevicep
   INFO(TCPX_INIT | TCPX_NET,
        "NET/" PRODUCT_NAME ": Registered dmabuf region 0x%lx of %lu Bytes", gpu_mem,
        gpu_mem_sz);
-  struct dma_buf_create_pages_info info;
-  info.dma_buf_fd = *dma_buf_fd;
-  info.create_page_pool = 0;
 
-  uint16_t pci_bdf[3];
-  ret = sscanf(nic_pci_addr, "0000:%hx:%hx.%hx",
-               &pci_bdf[0], &pci_bdf[1], &pci_bdf[2]);
-  info.pci_bdf[0] = pci_bdf[0];
-  info.pci_bdf[1] = pci_bdf[1];
-  info.pci_bdf[2] = pci_bdf[2];
-  if (ret != 3) {
-    err = -EINVAL;
-    goto err_close_dmabuf;
+  // First use Netlink based API for BIND-TX
+  if (netdev_bridge->isInited()) {
+    ret = bind_tx_nl(netdev_bridge, nic_pci_addr, *dma_buf_fd);
+    if (ret) {
+      // Successful Netlink Bind.
+      goto done;
+    }
+  } else {
+      INFO(TCPX_INIT | TCPX_NET,
+           "NET/" PRODUCT_NAME " : Skipping Bind TX using Netlink"
+           " since Netlink Init Failed. Falling back to ioctl().");
   }
 
-  ret = ioctl(*dma_buf_fd, DMA_BUF_CREATE_PAGES, &info);
+  // Fallback to IOCTL based API for BIND-TX
+  ret = bind_tx_ioctl(nic_pci_addr, *dma_buf_fd);
   if (ret < 0) {
-    perror("ioctl get dma_buf frags");
-    err = -EIO;
+    err = ret;
+    WARN("NET/" PRODUCT_NAME " : Bind TX failed for both Netlink and ioctl().");
     goto err_close_dmabuf;
   }
+
+done:
   return ret;
 
 err_close_dmabuf:

@@ -14,7 +14,6 @@
  limitations under the License.
  */
 
-
 /******** feature flags start ********/
 
 #define PRODUCT_NAME "GPUDirectTCPX"

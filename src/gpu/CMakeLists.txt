@@ -1,10 +1,10 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@ DETECT_PATH(adapter NET_GPUDIRECTTCPX_ADAPTER_LIB_PATH)
 DETECT_PATH(rxbufmgrclient NET_GPUDIRECTTCPX_RXBUFMGRCLIENT_LIB_PATH)
 DETECT_PATH(flags NET_GPUDIRECTTCPX_FLAGS_PATH)
 DETECT_PATH(misc NET_GPUDIRECTTCPX_MISC_PATH)
+DETECT_PATH(netdev NET_GPUDIRECTTCPX_NETDEV_PATH)
 
 #
 file(GLOB NET_GPUDIRECTTCPX_POOLS_LIB_HEADERS 
@@ -47,6 +48,7 @@ target_link_libraries(net_gpudirecttcpx_pools_lib
   net_gpudirecttcpx_adapter_lib
   net_gpudirecttcpx_rxbufmgrclient_lib
   net_gpudirecttcpx_misc
+  net_gpudirecttcpx_netdev
 )
 
 set_target_properties(net_gpudirecttcpx_pools_lib
@@ -64,6 +66,7 @@ target_link_libraries(net_gpudirecttcpx_pools_lib
 target_include_directories(net_gpudirecttcpx_pools_lib
   PRIVATE
     ${NET_GPUDIRECTTCPX_FLAGS_PATH}
+    ${NET_GPUDIRECTTCPX_NETDEV_PATH}
 )
 
 target_include_directories(net_gpudirecttcpx_pools_lib 

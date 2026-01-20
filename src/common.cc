@@ -81,7 +81,6 @@ void parseCoreRanges(char* _env_str, struct tcpxBindings *b) {
     char* ifname, *ranges;
     inPlaceStrSplit(phrase, ":", &ifname, &ranges);
     if (!ranges) {
-      // WARN("skip parsing %s", phrase);
       continue;
     }
 
@@ -127,7 +126,8 @@ tcpxResult_t tcpxMemHandleNew(struct tcpxMemHandle** mhandle) {
   (*mhandle)->uptr = nullptr;
   (*mhandle)->ptr = nullptr;
   (*mhandle)->mem_type = -1;
-  (*mhandle)->gpu_mem_fd = -1;
+  (*mhandle)->upstream_dma_buf_id = -1;
+  (*mhandle)->internal_gpu_mem_fd = -1;
   (*mhandle)->gpu = nullptr;
   (*mhandle)->gpu_tx = nullptr;
   return tcpxSuccess;
