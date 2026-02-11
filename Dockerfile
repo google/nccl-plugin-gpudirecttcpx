@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set Default CUDA Version Tag to 12.8
-ARG DOCKER_BUILD_CUDA_VERSION=12.8
+# Set Default CUDA Version Tag to 12.0
+ARG DOCKER_BUILD_CUDA_VERSION=12.0
 
 FROM nvidia/cuda:"${DOCKER_BUILD_CUDA_VERSION}".0-devel-ubuntu22.04 AS base
 
 ARG DOCKER_BUILD_CUDA_VERSION
 # Set Default NCCL Version Tag
-ARG DOCKER_BUILD_NCCL_VERSION_TAG=v2.25.1-1
+ARG DOCKER_BUILD_NCCL_VERSION_TAG=v2.19.4-1
 
 RUN echo "CUDA Version = $DOCKER_BUILD_CUDA_VERSION"
 RUN echo "NCCL Version Tag = $DOCKER_BUILD_NCCL_VERSION_TAG"

@@ -19,7 +19,7 @@ set -e
 PREPARE="false"
 CLEAN="false"
 GETOPTS="hpv:c"
-NCCL_VERSION_TAG="${NCCL_VERSION_TAG:-v2.25.1-1}"
+NCCL_VERSION_TAG="${NCCL_VERSION_TAG:-v2.19.4-1}"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILD_WORKDIR="${SCRIPT_DIR}/build_temp"
@@ -29,7 +29,7 @@ usage() {
   echo "Where:"
   echo "  -h        : Display this help message."
   echo "  -p        : Prepare sources for build."
-  echo "  -v        : NCCL version tag (default v2.25.1-1)."
+  echo "  -v        : NCCL version tag (default v2.19.4-1)."
   echo "  -c        : Clean build sources."
 }
 

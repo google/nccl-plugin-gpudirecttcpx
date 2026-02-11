@@ -17,7 +17,7 @@
 set -e
 set -o pipefail
 
-# Strip the version tag. For eg. strip from v2.25.1-1 to 2.25.1
+# Strip the version tag. For eg. strip from v2.19.4-1 to 2.19.4
 # to be used in cmake.
 VERSION_TAG_ARG=$1
 STRIPPED_NCCL_VERSION=$(echo "${VERSION_TAG_ARG}" | sed 's/^v//;s/-[^-]*$//')
