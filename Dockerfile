@@ -29,14 +29,22 @@ ENV DEBIAN_FRONTEND='noninteractive'
 RUN apt update && apt -y upgrade
 RUN apt -y autoremove
 
-RUN apt install -y --no-install-recommends \
-    git openssh-server wget iproute2 vim libopenmpi-dev build-essential \
-    cmake gdb python3 libmnl-dev \
-    protobuf-compiler libprotobuf-dev rsync libssl-dev libcurl4-openssl-dev \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+ git openssh-server wget iproute2 vim libopenmpi-dev build-essential \
+ cmake gdb python3 protobuf-compiler libprotobuf-dev rsync libssl-dev \
+ libcurl4-openssl-dev && rm -rf /var/lib/apt/lists/*
 
 ARG CUDA12_GENCODE='-gencode=arch=compute_90,code=sm_90'
 ARG CUDA12_PTX='-gencode=arch=compute_90,code=compute_90'
+
+# Build libmnl from source to provide static libmnl.a
+WORKDIR /third_party
+RUN wget https://netfilter.org/projects/libmnl/files/libmnl-1.0.5.tar.bz2
+RUN tar -xjf libmnl-1.0.5.tar.bz2
+WORKDIR libmnl-1.0.5
+RUN ./configure --enable-static
+RUN make
+RUN make install
 
 WORKDIR /third_party
 # Install NCCL

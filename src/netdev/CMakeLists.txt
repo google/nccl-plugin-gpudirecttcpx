@@ -35,10 +35,12 @@ set_target_properties(net_gpudirecttcpx_netdev
     LINKER_LANGUAGE CXX
 )
 
+find_library(LIBMNL_STATIC NAMES libmnl.a PATHS /usr/local/lib NO_DEFAULT_PATH)
 target_link_libraries(net_gpudirecttcpx_netdev
   PRIVATE
-    libmnl.so
+    ${LIBMNL_STATIC}
 )
+message("libmnl found at: ${LIBMNL_STATIC}")
 
 target_link_libraries(net_gpudirecttcpx_netdev
   PUBLIC

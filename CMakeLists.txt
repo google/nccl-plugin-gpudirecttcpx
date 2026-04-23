@@ -108,9 +108,20 @@ add_subdirectory(src)
 add_library(${NET_GPUDIRECTTCPX_EXPORT}-net SHARED
   src/nccl_plugin.cc
 )
+
 target_link_libraries(${NET_GPUDIRECTTCPX_EXPORT}-net
   PRIVATE
   net_tcpx
+)
+
+set(VERSION_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/tcpx_symbols.map)
+set_target_properties(${NET_GPUDIRECTTCPX_EXPORT}-net
+    PROPERTIES
+     LINK_DEPENDS ${VERSION_SCRIPT}
+)
+target_link_options(${NET_GPUDIRECTTCPX_EXPORT}-net PRIVATE
+  -Wl,--version-script=${VERSION_SCRIPT}
+  -Wl,--no-undefined-version
 )
 
 message("${NET_GPUDIRECTTCPX_EXPORT}-net built")

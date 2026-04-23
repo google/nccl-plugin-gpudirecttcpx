@@ -1,0 +1,6 @@
+{
+  global:
+    ncclNetPlugin_v7;
+  local:
+    *;
+};
